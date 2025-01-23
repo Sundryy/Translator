@@ -1,76 +1,56 @@
-
-from pynput.mouse import Controller
-from pynput import mouse
-from pynput import keyboard
-import threading
 import cv2
 import pyautogui
+import numpy
+import time
 
+firstX = 0
+firstY = 0
+lastX = 0
+lastY = 0
+choosingRectangle = False
 
+topLeft = (firstX,firstY)
+bottomRight = (lastX,lastY)
+colorLine = (0,0,255)
+lineThickness = 10
 
-key_held = False
-
-
-#finds initial cursor position,
-def on_press(key):
-    global key_held, initialX, initialY
+def capture_event(event,x,y,flags,params):
+    global firstX,firstY,lastX,lastY, choosingRectangle, topLeft, bottomRight, colorLine, lineThickness
+    if event == cv2.EVENT_LBUTTONDOWN:
+        choosingRectangle = True
+        firstX = x
+        firstY = y
+        print(x)
     
-    if key.char == '-' and key_held == False:
-        moving  = Controller()
-        position = moving.position
-        initialX = position[0]
-        initialY = position[1]
-        print('pressed')
-        print(initialX)
-        print(initialY)
-        key_held = True
-
-#Determines final position of cursor
-def on_release(key):
-    global key_held
-    #if key_held == True:
-    moving = Controller()
-    position = moving.position
-    lastX = position[0]
-    lastY = position[1]
-    print(lastX)
-    print(lastY)
-    key_held = False
-
-#determines position of cursor movement, allowing changing box
-def on_move(x,y):
-    global initialX, initialY
-    moving = Controller()
-    position = moving.position
-    print(position)
+    elif event == cv2.EVENT_MOUSEMOVE and choosingRectangle:
+        lastX = x
+        lastY = y
+        print(lastX)
+        #for some reason i cant get the red rectangle to appear...
+        imageCopy = image.copy()
+        cv2.rectangle(imageCopy,
+                      topLeft,
+                      bottomRight,
+                      colorLine,
+                      lineThickness)
+        cv2.imshow('image2', imageCopy)
 
 
-   # image =  cv2.rectangle(image, (initialX,initialY), (x,y), color=(0,255,0))
-    #cv2.imshow(image)
-
-
-def start_listeners():
-    # Start the keyboard listener
-    keyboard_listener = keyboard.Listener(on_press=on_press, on_release=on_release)
-    keyboard_thread = threading.Thread(target=keyboard_listener.start)
-    keyboard_thread.start()
-
-    # Start the mouse listener
-    mouse_listener = mouse.Listener(on_move=on_move)
-    mouse_thread = threading.Thread(target=mouse_listener.start)
-    mouse_thread.start()
-
-    # Join threads to keep them running
-    keyboard_thread.join()
-    mouse_thread.join()
-
-if __name__ == "__main__":
-    start_listeners()
+    #takes new screenshot of contents within coordinates
+    elif event == cv2.EVENT_LBUTTONUP:
+        choosingRectangle = False
+        
+        print('dog')
+        newImage = image[firstY:lastY, firstX:lastX]
+        cv2.destroyAllWindows
+        cv2.imshow('new',newImage)
     
+image = pyautogui.screenshot()
+image = numpy.array(image)
+image = cv2.cvtColor(image, cv2.COLOR_RGB2BGR)
 
-with keyboard.Listener(on_press=on_press, on_release=on_release) as listener:
-    listener.join()
+cv2.imshow('image', image)
+cv2.setMouseCallback('image', capture_event)
 
-with mouse.Listener(on_move=on_move) as listener:
-    listener.join()
-
+cv2.waitKey(0)
+cv2.destroyAllWindows
